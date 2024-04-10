@@ -6,8 +6,6 @@ import tip.ast.AstNodeData.DeclarationData
 import tip.solvers._
 import tip.cfg._
 
-import scala.collection.immutable.Set
-
 /**
   * Base class for live variables analysis.
   */
@@ -20,20 +18,28 @@ abstract class LiveVarsAnalysis(cfg: IntraproceduralProgramCfg)(implicit declDat
   NoPointers.assertContainsProgram(cfg.prog)
   NoRecords.assertContainsProgram(cfg.prog)
 
+  def vars(e: AExpr): lattice.sublattice.Element =
+    e match {
+      case ACallFuncExpr(targetFun, args, _) => vars(targetFun) union args.map(vars).fold(Set.empty)((x, y) => x union y)
+      case id: AIdentifier => Set(id)
+      case ABinaryOp(_, left, right, _) => vars(left) union vars(right)
+      case _ => Set.empty
+    }
+
   def transfer(n: CfgNode, s: lattice.sublattice.Element): lattice.sublattice.Element =
     n match {
       case _: CfgFunExitNode => lattice.sublattice.bottom
       case r: CfgStmtNode =>
         r.data match {
-          case cond: AExpr => ??? //<--- Complete here
+          case cond: AExpr => s union vars(cond)
           case as: AAssignStmt =>
             as.left match {
-              case id: AIdentifier => ??? //<--- Complete here
+              case id: AIdentifier => s - id union vars(as.right)
               case _ => ???
             }
-          case varr: AVarStmt => ??? //<--- Complete here
-          case ret: AReturnStmt => ??? //<--- Complete here
-          case out: AOutputStmt => ??? //<--- Complete here
+          case varr: AVarStmt => s diff varr.declIds.toSet
+          case ret: AReturnStmt => s union vars(ret.exp)
+          case out: AOutputStmt => s union vars(out.exp)
           case _ => s
         }
       case _ => s

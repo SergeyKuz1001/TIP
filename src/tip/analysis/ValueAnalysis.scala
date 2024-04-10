@@ -26,7 +26,7 @@ trait ValueAnalysisMisc {
   /**
     * Set of declared variables, used by `statelattice`.
     */
-  val declaredVars: Set[ADeclaration] = cfg.nodes.flatMap(_.declaredVarsAndParams)
+  val declaredVars: Set[ADeclaration] = cfg.nodes.flatMap(_.declaredVarsAndParamsWithoutFuns)
 
   /**
     * The lattice of abstract states.
@@ -69,10 +69,10 @@ trait ValueAnalysisMisc {
       case r: CfgStmtNode =>
         r.data match {
           // var declarations
-          case varr: AVarStmt => ??? //<--- Complete here
+          case varr: AVarStmt => varr.declIds.foldLeft(s)((s, id) => s + (id -> valuelattice.bottom))
 
           // assignments
-          case AAssignStmt(id: AIdentifier, right, _) => ??? //<--- Complete here
+          case AAssignStmt(id: AIdentifier, right, _) => s + (declData(id) -> eval(right, s))
 
           // all others: like no-ops
           case _ => s

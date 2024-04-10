@@ -36,6 +36,18 @@ object CfgOps {
       }
 
     /**
+      * Returns the set of identifiers declared by the node, including local variables and function parameters.
+      */
+    def declaredVarsAndParamsWithoutFuns(implicit declData: DeclarationData): Set[ADeclaration] =
+      n match {
+        case r: CfgStmtNode =>
+          r.data.declaredLocals
+        case r: CfgFunEntryNode =>
+          r.data.params.toSet
+        case _ => Set()
+      }
+
+    /**
       * Returns the set of declarations of the identifiers that appear in the node.
       */
     def appearingIds(implicit declData: DeclarationData): Set[ADeclaration] =

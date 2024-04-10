@@ -5,6 +5,7 @@ import java.io.{File, FileFilter}
 import org.parboiled2.ParseError
 import tip.analysis.FlowSensitiveAnalysis.{Analysis => dfa, AnalysisOption => dfo}
 import tip.analysis._
+import tip.analysis.VariableSizeTyping._
 import tip.ast.AstNodeData._
 import tip.ast.{AProgram, NoNormalizer}
 import tip.concolic.ConcolicEngine
@@ -213,9 +214,15 @@ object Tip extends App {
                 if (!dfo.interprocedural(v)) {
                   FlowSensitiveAnalysis.select(s, v, wcfg).foreach { an =>
                     // run the analysis
-                    log.verb(s"Performing ${an.getClass.getSimpleName}")
+                    log.verb(s"Performing ${an.getClass.getName}")
                     val res = an.analyze().asInstanceOf[Map[CfgNode, _]]
                     Output.output(file, DataFlowOutput(s), wcfg.toDot(Output.labeler(res, an.stateAfterNode), Output.dotIder), options.out)
+                    an match {
+                      case vsan: VariableSizeAnalysis.Intraprocedural.WorklistSolverWithWidening =>
+                        implicit val itypeData: ITypeData = vsan.itypeData
+                        Output.output(file, OtherOutput(OutputKindE.types), programNode.toITypedString, options.out)
+                      case _ =>
+                    }
                   }
                 }
             }
@@ -336,7 +343,7 @@ object Tip extends App {
           options.andersen = true
         case "-steensgaard" =>
           options.steensgaard = true
-        case "-sign" | "-livevars" | "-available" | "-vbusy" | "-reaching" | "-constprop" | "-interval" | "-copyconstprop" | "-uninitvars" | "-taint" =>
+        case "-sign" | "-livevars" | "-available" | "-vbusy" | "-reaching" | "-constprop" | "-interval" | "-copyconstprop" | "-uninitvars" | "-taint" | "-varsize" =>
           options.dfAnalysis += dfa.withName(args(i).drop(1)) -> {
             if (i + 1 < args.length && dfo.values.map(_.toString()).contains(args(i + 1))) {
               i = i + 1
